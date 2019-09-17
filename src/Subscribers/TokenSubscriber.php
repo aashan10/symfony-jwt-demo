@@ -14,6 +14,9 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Firebase\JWT\JWT;
 
@@ -77,14 +80,22 @@ class TokenSubscriber implements EventSubscriberInterface
             ], $exception->getCode()));
 
         }else{
+            switch ($exception){
+                case $exception instanceof HttpExceptionInterface :
+                    $code = $exception->getStatusCode();
+                    break;
+                default :
+                    $code = 500;
+                    break;
+
+            }
             $exception = explode('\\',  get_class($event->getException()));
             $name = array_pop($exception);
             $event->setResponse( JsonResponse::create([
                 'status' => 'error',
                 'type' => $name,
-                'message' => $event->getException()->getMessage(),
-//                'stack' => $event->getException()->getTrace()
-            ], 401) );
+                'message' => $event->getException()->getMessage()
+            ], $code) );
         }
 
     }
